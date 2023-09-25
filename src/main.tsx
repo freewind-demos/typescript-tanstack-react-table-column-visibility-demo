@@ -1,12 +1,13 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import ReactDOM from 'react-dom/client'
 
 import './index.css'
 
 import {
-  createTable,
+  ColumnDef,
+  flexRender,
   getCoreRowModel,
-  useTableInstance,
+  useReactTable,
 } from '@tanstack/react-table'
 
 type Person = {
@@ -45,52 +46,56 @@ const defaultData: Person[] = [
   },
 ]
 
-let table = createTable().setRowType<Person>()
-
-const defaultColumns = [
-  table.createGroup({
+const defaultColumns: ColumnDef<Person>[] = [
+  {
     header: 'Name',
     footer: props => props.column.id,
     columns: [
-      table.createDataColumn('firstName', {
+      {
+        accessorKey: 'firstName',
         cell: info => info.getValue(),
         footer: props => props.column.id,
-      }),
-      table.createDataColumn(row => row.lastName, {
+      },
+      {
+        accessorFn: row => row.lastName,
         id: 'lastName',
         cell: info => info.getValue(),
         header: () => <span>Last Name</span>,
         footer: props => props.column.id,
-      }),
+      },
     ],
-  }),
-  table.createGroup({
+  },
+  {
     header: 'Info',
     footer: props => props.column.id,
     columns: [
-      table.createDataColumn('age', {
+      {
+        accessorKey: 'age',
         header: () => 'Age',
         footer: props => props.column.id,
-      }),
-      table.createGroup({
+      },
+      {
         header: 'More Info',
         columns: [
-          table.createDataColumn('visits', {
+          {
+            accessorKey: 'visits',
             header: () => <span>Visits</span>,
             footer: props => props.column.id,
-          }),
-          table.createDataColumn('status', {
+          },
+          {
+            accessorKey: 'status',
             header: 'Status',
             footer: props => props.column.id,
-          }),
-          table.createDataColumn('progress', {
+          },
+          {
+            accessorKey: 'progress',
             header: 'Profile Progress',
             footer: props => props.column.id,
-          }),
+          },
         ],
-      }),
+      },
     ],
-  }),
+  },
 ]
 
 function App() {
@@ -102,7 +107,7 @@ function App() {
 
   const rerender = React.useReducer(() => ({}), {})[1]
 
-  const instance = useTableInstance(table, {
+  const table = useReactTable({
     data,
     columns,
     state: {
@@ -116,84 +121,98 @@ function App() {
   })
 
   return (
-    <div className="p-2">
-      <div className="inline-block border border-black shadow rounded">
-        <div className="px-1 border-b border-black">
-          <label>
-            <input
-              {...{
-                type: 'checkbox',
-                checked: instance.getIsAllColumnsVisible(),
-                onChange: instance.getToggleAllColumnsVisibilityHandler(),
-              }}
-            />{' '}
-            Toggle All
-          </label>
-        </div>
-        {instance.getAllLeafColumns().map(column => {
-          return (
-            <div key={column.id} className="px-1">
-              <label>
-                <input
+      <div className="p-2">
+        <div className="inline-block border border-black shadow rounded">
+          <div className="px-1 border-b border-black">
+            <label>
+              <input
                   {...{
                     type: 'checkbox',
-                    checked: column.getIsVisible(),
-                    onChange: column.getToggleVisibilityHandler(),
+                    checked: table.getIsAllColumnsVisible(),
+                    onChange: table.getToggleAllColumnsVisibilityHandler(),
                   }}
-                />{' '}
-                {column.id}
-              </label>
-            </div>
-          )
-        })}
+              />{' '}
+              Toggle All
+            </label>
+          </div>
+          {table.getAllLeafColumns().map(column => {
+            return (
+                <div key={column.id} className="px-1">
+                  <label>
+                    <input
+                        {...{
+                          type: 'checkbox',
+                          checked: column.getIsVisible(),
+                          onChange: column.getToggleVisibilityHandler(),
+                        }}
+                    />{' '}
+                    {column.id}
+                  </label>
+                </div>
+            )
+          })}
+        </div>
+        <div className="h-4" />
+        <table>
+          <thead>
+          {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                    <th key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                          )}
+                    </th>
+                ))}
+              </tr>
+          ))}
+          </thead>
+          <tbody>
+          {table.getRowModel().rows.map(row => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map(cell => (
+                    <td key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                ))}
+              </tr>
+          ))}
+          </tbody>
+          <tfoot>
+          {table.getFooterGroups().map(footerGroup => (
+              <tr key={footerGroup.id}>
+                {footerGroup.headers.map(header => (
+                    <th key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.footer,
+                              header.getContext()
+                          )}
+                    </th>
+                ))}
+              </tr>
+          ))}
+          </tfoot>
+        </table>
+        <div className="h-4" />
+        <button onClick={() => rerender()} className="border p-2">
+          Rerender
+        </button>
+        <div className="h-4" />
+        <pre>{JSON.stringify(table.getState().columnVisibility, null, 2)}</pre>
       </div>
-      <div className="h-4" />
-      <table>
-        <thead>
-        {instance.getHeaderGroups().map(headerGroup => (
-          <tr key={headerGroup.id}>
-            {headerGroup.headers.map(header => (
-              <th key={header.id} colSpan={header.colSpan}>
-                {header.isPlaceholder ? null : header.renderHeader()}
-              </th>
-            ))}
-          </tr>
-        ))}
-        </thead>
-        <tbody>
-        {instance.getRowModel().rows.map(row => (
-          <tr key={row.id}>
-            {row.getVisibleCells().map(cell => (
-              <td key={cell.id}>{cell.renderCell()}</td>
-            ))}
-          </tr>
-        ))}
-        </tbody>
-        <tfoot>
-        {instance.getFooterGroups().map(footerGroup => (
-          <tr key={footerGroup.id}>
-            {footerGroup.headers.map(header => (
-              <th key={header.id} colSpan={header.colSpan}>
-                {header.isPlaceholder ? null : header.renderFooter()}
-              </th>
-            ))}
-          </tr>
-        ))}
-        </tfoot>
-      </table>
-      <div className="h-4" />
-      <button onClick={() => rerender()} className="border p-2">
-        Rerender
-      </button>
-      <div className="h-4" />
-      <pre>{JSON.stringify(instance.getState().columnVisibility, null, 2)}</pre>
-    </div>
   )
 }
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Failed to find the root element')
+
+ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
 )
